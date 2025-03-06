@@ -10,5 +10,6 @@ poetry -q self add poetry-plugin-dotenv
 poetry run pre-commit install
 
 cat > .env <<EOL
-
+ULTRAHUMAN_API_SECRET=
+ULTRAHUMAN_USER_EMAIL=
 EOL

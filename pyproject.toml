@@ -8,6 +8,9 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.12"
 streamlit = "^1.43.0"
+requests = "^2.32.3"
+pydantic = "^2.10.6"
+plotly = "^6.0.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -62,6 +65,7 @@ lint = "flake8 ."
 test = 'coverage run -m pytest --showlocals'
 hooks-run = "pre-commit run --all-files"
 hooks-update = "pre-commit auto-update"
+run = "streamlit run ultrahuman_dashboard/main.py"
 
 [tool.poe.tasks.test-full]
 sequence = [
