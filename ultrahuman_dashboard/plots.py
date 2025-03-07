@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 import plotly.express as px
 from plotly.graph_objs import Figure
-from schemas import ParsedData
+
+from ultrahuman_dashboard.schemas import ParsedData
 
 OVERNIGHT_PLOT_RANGE_START = datetime.combine(
     datetime.today() - timedelta(days=1), datetime.min.time()

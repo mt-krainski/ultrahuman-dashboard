@@ -2,15 +2,16 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 import streamlit as st
-from formatting import format_time, format_timedelta
-from plots import (
+
+from ultrahuman_dashboard.formatting import format_time, format_timedelta
+from ultrahuman_dashboard.plots import (
     plot_overnight,
     stamp_bedtime_end,
     stamp_bedtime_start,
     stamp_fell_asleep,
 )
-from schemas import samples_to_df
-from ultrahuman_api import get_from_ultrahuman_api, parse_data
+from ultrahuman_dashboard.schemas import samples_to_df
+from ultrahuman_dashboard.ultrahuman_api import get_from_ultrahuman_api, parse_data
 
 # TODO: The questions from the Insomnia program sleep diary
 # Daily notes:

@@ -2,7 +2,8 @@ import os
 from datetime import datetime, timedelta
 
 import requests
-from schemas import ParsedData, UltrahumanApiResponse
+
+from ultrahuman_dashboard.schemas import ParsedData, UltrahumanApiResponse
 
 ULTRAHUMAN_PARTNER_API = "https://partner.ultrahuman.com/api/v1/metrics"
 ULTRAHUMAN_USER_EMAIL = os.environ.get("ULTRAHUMAN_USER_EMAIL")
