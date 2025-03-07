@@ -18,7 +18,7 @@ Classes:
 
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, ValidationInfo, model_validator
 
 
 class ValueTimestamp(BaseModel):
@@ -132,8 +132,11 @@ class Data(BaseModel):
     sleep_rhr: Optional[SingleValueMetric] = None
 
     @model_validator(mode="before")
-    def transform_metric_data(self, values: Dict[str, Any]) -> Dict[str, Any]:
+    def transform_metric_data(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         """Transform metric_data from a list of objects to individual metric objects.
+
+        First argument to this function must be `cls`, otherwise Pydantic does something
+        weird and it doesn't work.
 
         Args:
             values (Dict[str, Any]): metric_data values
