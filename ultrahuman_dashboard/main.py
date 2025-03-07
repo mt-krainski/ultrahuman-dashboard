@@ -71,17 +71,32 @@ from ultrahuman_api import get
 # - How many days of more-than-enough sleep (8h+)
 # - Rising time consistency - what time did you wake up, is it consistent?
 
+CORE_SLEEP_TIME = 5.5 * 3600
+
 st.title("Ultrahuman Ring Air Enhanced Dashboard")
 
 now = datetime.now()
 today = now.date()
-data = get(today - timedelta(days=1))
+data = get(today)
+previous_day_data = get(today - timedelta(days=1))
 
 col1, col2, col3 = st.columns(3)
 
 # previous_day_data = get(today - timedelta(days=2))
 bedtime_start = datetime.fromtimestamp(data.data.sleep.bedtime_start)
 bedtime_end = datetime.fromtimestamp(data.data.sleep.bedtime_end)
+
+# Actual bedtime end
+bedtime_end = datetime.fromtimestamp(data.data.sleep.bedtime_end)
+for segment in reversed(data.data.sleep.sleep_graph["data"]):
+    if segment["type"] == "awake":
+        bedtime_end = datetime.fromtimestamp(segment["start"])
+        continue
+
+    segment_duration = segment["end"] - segment["start"]
+    if segment_duration > 300:
+        break
+
 time_in_bed = bedtime_end - bedtime_start
 
 prior_wakefulness_seconds = (now - bedtime_end).seconds
@@ -92,10 +107,18 @@ col3.metric("Prior wakefulness", f"{hours}h {minutes}m")
 st.divider()
 
 # Time to fall asleep
-first_segment = data.data.sleep.sleep_graph["data"][0]
 time_to_fall_asleep = 0
-if first_segment["type"] == "awake":
-    time_to_fall_asleep = first_segment["end"] - first_segment["start"]
+for segment in data.data.sleep.sleep_graph["data"]:
+    segment_duration = segment["end"] - segment["start"]
+    if segment["type"] == "awake":
+        time_to_fall_asleep += segment_duration
+        continue
+
+    if segment_duration > 300:
+        break
+
+    time_to_fall_asleep += segment_duration
+
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Went to bed", bedtime_start.strftime("%H:%M"))
@@ -119,7 +142,23 @@ col1.metric("Time in bed", f"{int(hours)}h {int(minutes)}m")
 
 hours, remainder = divmod(time_asleep, 3600)
 minutes, _ = divmod(remainder, 60)
-col2.metric("Time asleep", f"{int(hours)}h {int(minutes)}m")
+core_sleep_delta = time_asleep - CORE_SLEEP_TIME
+if core_sleep_delta < 0:
+    core_sleep_delta_hours, core_sleep_delta_remainder = divmod(
+        abs(core_sleep_delta), 3600
+    )
+    core_sleep_delta_minutes, _ = divmod(core_sleep_delta_remainder, 60)
+    core_sleep_delta_str = ""
+    if core_sleep_delta_hours > 0:
+        core_sleep_delta_str += f"{int(core_sleep_delta_hours)}h "
+    core_sleep_delta_str += f"{int(core_sleep_delta_minutes)}m"
+    col2.metric(
+        "Time asleep",
+        f"{int(hours)}h {int(minutes)}m",
+        delta=f"-{core_sleep_delta_str}",
+    )
+else:
+    col2.metric("Time asleep", f"{int(hours)}h {int(minutes)}m")
 
 sleep_efficiency = time_asleep / time_in_bed.total_seconds()
 col3.metric("Sleep efficiency", f"{sleep_efficiency:.0%}")
@@ -133,13 +172,43 @@ df = pd.DataFrame(
         for vt in data.data.temp.values
     ]
 )
+df_previous_day = pd.DataFrame(
+    [
+        {"value": vt.value, "timestamp": datetime.fromtimestamp(vt.timestamp)}
+        for vt in previous_day_data.data.temp.values
+    ]
+)
+df = pd.concat([df_previous_day, df])
+
+previous_day_10pm = datetime.combine(
+    today - timedelta(days=1), datetime.min.time()
+) + timedelta(hours=22)
+current_day_8am = datetime.combine(today, datetime.min.time()) + timedelta(hours=8)
 
 # Display the dataframe
 fig = px.line(
-    df[df["timestamp"] < bedtime_end],
+    df[(df["timestamp"] > previous_day_10pm) & (df["timestamp"] < current_day_8am)],
     x="timestamp",
     y="value",
     title="Temperature Over Time",
+)
+fig.add_vline(
+    x=bedtime_start.timestamp() * 1000,
+    line=dict(color="rgba(255, 215, 0, 0.5)", dash="dash"),
+    annotation_text="Went to bed",
+    annotation_position="top left",
+)
+fig.add_vline(
+    x=(bedtime_start + timedelta(seconds=time_to_fall_asleep)).timestamp() * 1000,
+    line=dict(color="rgba(139, 0, 0, 0.5)", dash="dash"),
+    annotation_text="Fell asleep",
+    annotation_position="top right",
+)
+fig.add_vline(
+    x=bedtime_end.timestamp() * 1000,
+    line=dict(color="rgba(255, 215, 0, 0.5)", dash="dash"),
+    annotation_text="Got up",
+    annotation_position="top right",
 )
 fig.update_yaxes(range=[33, 38])
 col1.plotly_chart(fig)
@@ -151,13 +220,39 @@ df = pd.DataFrame(
         for vt in data.data.hr.values
     ]
 )
+df_previous_day = pd.DataFrame(
+    [
+        {"value": vt.value, "timestamp": datetime.fromtimestamp(vt.timestamp)}
+        for vt in previous_day_data.data.temp.values
+    ]
+)
+df = pd.concat([df_previous_day, df])
 
 # Display the dataframe
 fig = px.line(
-    df[df["timestamp"] < bedtime_end],
+    df[(df["timestamp"] > previous_day_10pm) & (df["timestamp"] < current_day_8am)],
     x="timestamp",
     y="value",
     title="Heart Rate Over Time",
 )
-fig.update_yaxes(range=[40, 100])
+fig.add_vline(
+    x=bedtime_start.timestamp() * 1000,
+    line=dict(color="rgba(255, 215, 0, 0.5)", dash="dash"),
+    annotation_text="Went to bed",
+    annotation_position="top left",
+)
+fig.add_vline(
+    x=(bedtime_start + timedelta(seconds=time_to_fall_asleep)).timestamp() * 1000,
+    line=dict(color="rgba(139, 0, 0, 0.5)", dash="dash"),
+    annotation_text="Fell asleep",
+    annotation_position="top right",
+)
+fig.add_vline(
+    x=bedtime_end.timestamp() * 1000,
+    line=dict(color="rgba(255, 215, 0, 0.5)", dash="dash"),
+    annotation_text="Got up",
+    annotation_position="top right",
+)
+
+fig.update_yaxes(range=[40, 120])
 col2.plotly_chart(fig)
