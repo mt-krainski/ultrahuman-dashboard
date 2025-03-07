@@ -1,10 +1,8 @@
 import os
 from datetime import datetime, timedelta
-from typing import TypedDict
 
 import requests
-
-from ultrahuman_dashboard.schemas import UltrahumanApiResponse
+from schemas import ParsedData, UltrahumanApiResponse
 
 ULTRAHUMAN_PARTNER_API = "https://partner.ultrahuman.com/api/v1/metrics"
 ULTRAHUMAN_USER_EMAIL = os.environ.get("ULTRAHUMAN_USER_EMAIL")
@@ -37,10 +35,17 @@ def get_from_ultrahuman_api(date: datetime):
 
 
 def get_bedtime_start(data: UltrahumanApiResponse) -> datetime:
+    """Return the bedtime start time."""
     return datetime.fromtimestamp(data.data.sleep.bedtime_start)
 
 
 def get_bedtime_end(data: UltrahumanApiResponse) -> datetime:
+    """
+    Return the bedtime end time.
+
+    This corrects for cases where user is awake but sleep graph is still counting sleep
+    time.
+    """
     bedtime_end = datetime.fromtimestamp(data.data.sleep.bedtime_end)
     for segment in reversed(data.data.sleep.sleep_graph["data"]):
         if segment["type"] == "awake":
@@ -55,6 +60,11 @@ def get_bedtime_end(data: UltrahumanApiResponse) -> datetime:
 
 
 def get_time_to_fall_asleep(data: UltrahumanApiResponse) -> timedelta:
+    """
+    Return the time to fall asleep.
+
+    This is the time from bedtime to the first sleep segment of at least 5 minutes.
+    """
     time_to_fall_asleep_s = 0
     for segment in data.data.sleep.sleep_graph["data"]:
         segment_duration = segment["end"] - segment["start"]
@@ -70,6 +80,11 @@ def get_time_to_fall_asleep(data: UltrahumanApiResponse) -> timedelta:
 
 
 def get_time_asleep(data: UltrahumanApiResponse) -> timedelta:
+    """
+    Return the total time asleep.
+
+    This is counted as total duration of non-awake segments.
+    """
     time_asleep_s = 0
     for segment in data.data.sleep.sleep_graph["data"]:
         if segment["type"] != "awake":
@@ -77,20 +92,8 @@ def get_time_asleep(data: UltrahumanApiResponse) -> timedelta:
     return timedelta(seconds=time_asleep_s)
 
 
-class ParsedData(TypedDict):
-    bedtime_start: datetime
-    bedtime_end: datetime
-    time_in_bed: timedelta
-    prior_wakefulness: timedelta
-    sleep_target: datetime
-    time_to_fall_asleep: timedelta
-    time_asleep: timedelta
-    core_sleep_delta: timedelta
-    sleep_efficiency: float
-    sleep_efficiency_delta: float
-
-
 def parse_data(data: UltrahumanApiResponse) -> ParsedData:
+    """Extract most useful data from the Ultrahuman API response."""
     now = datetime.now()
     bedtime_start = get_bedtime_start(data)
     bedtime_end = get_bedtime_end(data)

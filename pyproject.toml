@@ -41,7 +41,7 @@ build-backend = "poetry.core.masonry.api"
 max-line-length = 88
 dictionaries = ["en_US", "python", "technical"]
 builtins-ignorelist = ["id"]
-ignore = ["D104", "D100", "D101", "D106"]
+ignore = ["D104", "D100", "D101", "D106", "W503"]
 per-file-ignores = """
     tests/**: S101
 """

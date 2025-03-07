@@ -1,8 +1,6 @@
 from datetime import datetime, timedelta
-from typing import List
 
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 from formatting import format_time, format_timedelta
 from plots import (
@@ -11,7 +9,7 @@ from plots import (
     stamp_bedtime_start,
     stamp_fell_asleep,
 )
-from schemas import ValueTimestamp
+from schemas import samples_to_df
 from ultrahuman_api import get_from_ultrahuman_api, parse_data
 
 # TODO: The questions from the Insomnia program sleep diary
@@ -49,7 +47,7 @@ from ultrahuman_api import get_from_ultrahuman_api, parse_data
 #
 # Refreshed summary
 # - the number of good nights of sleep
-# - the number of nights of core sleep (5.5h+)
+# - the number of nights of core sleep (5.5+ h)
 # - the number of insomnia nights
 # - Sleep efficiency: time asleep / time in bed (90% is a good score)
 # - how consistent is the wake up time (number of days you arise within half hour of
@@ -57,7 +55,7 @@ from ultrahuman_api import get_from_ultrahuman_api, parse_data
 #
 # Other notes:
 # - Temperature drop
-# - Sleep HR pattern (https://ouraring.com/blog/sleeping-heart-rate/?srsltid=AfmBOorjLb4HOEcb11rhBya2CIdSoPox-CZOM8B2phnxxG28qV2dE58f)
+# - Sleep HR pattern (https://ouraring.com/blog/sleeping-heart-rate/?srsltid=AfmBOorjLb4HOEcb11rhBya2CIdSoPox-CZOM8B2phnxxG28qV2dE58f)  # noqa: SC100,E501
 #
 #
 # Daily Reports:
@@ -77,7 +75,7 @@ from ultrahuman_api import get_from_ultrahuman_api, parse_data
 # - How many times you wake up during the night
 # - How many days of effective sleep (sleep efficiency above 90%)
 # - How many days of core sleep
-# - How many days of more-than-enough sleep (8h+)
+# - How many days of more-than-enough sleep (8+ h)
 # - Rising time consistency - what time did you wake up, is it consistent?
 
 CORE_SLEEP_TIME = timedelta(hours=5, minutes=30)
@@ -130,15 +128,6 @@ col3.metric(
 
 
 col1, col2 = st.columns(2)
-
-
-def samples_to_df(samples: List[ValueTimestamp]) -> pd.DataFrame:
-    return pd.DataFrame(
-        [
-            {"value": vt.value, "timestamp": datetime.fromtimestamp(vt.timestamp)}
-            for vt in samples
-        ]
-    )
 
 
 df = samples_to_df(data.data.temp.values)

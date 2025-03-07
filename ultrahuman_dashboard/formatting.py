@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 
 def format_timedelta(td: timedelta) -> str:
+    """Format a timedelta as hours and minutes."""
     total_minutes = int(td.total_seconds() // 60)
     sign = "-" if total_minutes < 0 else ""
     total_minutes = abs(total_minutes)
@@ -13,4 +14,5 @@ def format_timedelta(td: timedelta) -> str:
 
 
 def format_time(dt: datetime) -> str:
+    """Format datetime as hours and minutes."""
     return dt.strftime("%H:%M")

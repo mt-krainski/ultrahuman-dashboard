@@ -16,8 +16,10 @@ Classes:
     UltrahumanApiResponse: Represents the API response structure.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, TypedDict, Union
 
+import pandas as pd
 from pydantic import BaseModel, model_validator
 
 
@@ -162,3 +164,34 @@ class UltrahumanApiResponse(BaseModel):
     data: Data
     error: Optional[Any]
     status: int
+
+
+class ParsedData(TypedDict):
+    bedtime_start: datetime
+    bedtime_end: datetime
+    time_in_bed: timedelta
+    prior_wakefulness: timedelta
+    sleep_target: datetime
+    time_to_fall_asleep: timedelta
+    time_asleep: timedelta
+    core_sleep_delta: timedelta
+    sleep_efficiency: float
+    sleep_efficiency_delta: float
+
+
+def samples_to_df(samples: List[ValueTimestamp]) -> pd.DataFrame:
+    """
+    Convert a list of ValueTimestamp objects to a pandas DataFrame.
+
+    Args:
+        samples (List[ValueTimestamp]): List of ValueTimestamp objects.
+
+    Returns:
+        pd.DataFrame: DataFrame with 'value' and 'timestamp' columns.
+    """
+    return pd.DataFrame(
+        [
+            {"value": vt.value, "timestamp": datetime.fromtimestamp(vt.timestamp)}
+            for vt in samples
+        ]
+    )
