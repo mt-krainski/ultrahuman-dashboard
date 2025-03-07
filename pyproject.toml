@@ -61,7 +61,7 @@ envfile = ".env"
 [tool.poe.tasks]
 configure = "./scripts/configure.sh"
 update = "./scripts/update.sh"
-lint = "flake8 ."
+lint = "flake8 scripts tests ultrahuman_dashboard"
 test = 'coverage run -m pytest --showlocals'
 hooks-run = "pre-commit run --all-files"
 hooks-update = "pre-commit auto-update"
