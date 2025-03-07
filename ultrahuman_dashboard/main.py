@@ -79,12 +79,26 @@ from ultrahuman_dashboard.ultrahuman_api import get_from_ultrahuman_api, parse_d
 # - How many days of more-than-enough sleep (8+ h)
 # - Rising time consistency - what time did you wake up, is it consistent?
 
-CORE_SLEEP_TIME = timedelta(hours=5, minutes=30)
-PRIOR_WAKEFULNESS_TARGET = timedelta(hours=16)
-SLEEP_EFFICIENCY_TARGET = 0.9
+st.set_page_config(page_title="Sleep Dashboard", layout="centered")
 
+st.markdown(
+    """
+    <style>
+        .stMainBlockContainer {
+            margin-top: -5em;
+        }
+        #MainMenu {visibility: hidden;}
+        .stAppDeployButton {display:none;}
+        .stAppHeader {display:none;}
+        footer {visibility: hidden;}
+        #stDecoration {display:none;}
+    </style>
+""",
+    unsafe_allow_html=True,
+)
 
-st.title("Ultrahuman Ring Air Enhanced Dashboard")
+st.title("My Sleep Dashboard")
+st.divider()
 
 now = datetime.now()
 today = now.date()
@@ -127,6 +141,7 @@ col3.metric(
     delta=f"{today_metrics['sleep_efficiency_delta']:.0%}",
 )
 
+st.divider()
 
 col1, col2 = st.columns(2)
 
@@ -135,7 +150,7 @@ df = samples_to_df(data.data.temp.values)
 df_previous_day = samples_to_df(previous_day_data.data.temp.values)
 df = pd.concat([df_previous_day, df])
 
-fig = plot_overnight(df, "Temperature Over Time")
+fig = plot_overnight(df, "Temperature")
 stamp_bedtime_start(fig, today_metrics)
 stamp_fell_asleep(fig, today_metrics)
 stamp_bedtime_end(fig, today_metrics)
