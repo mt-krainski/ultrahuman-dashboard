@@ -72,6 +72,8 @@ from ultrahuman_api import get
 # - Rising time consistency - what time did you wake up, is it consistent?
 
 CORE_SLEEP_TIME = 5.5 * 3600
+PRIOR_WAKEFULNESS_TARGET = 16 * 3600
+SLEEP_EFFICIENCY_TARGET = 0.9
 
 st.title("Ultrahuman Ring Air Enhanced Dashboard")
 
@@ -102,7 +104,9 @@ time_in_bed = bedtime_end - bedtime_start
 prior_wakefulness_seconds = (now - bedtime_end).seconds
 hours, remainder = divmod(prior_wakefulness_seconds, 3600)
 minutes, _ = divmod(remainder, 60)
-col3.metric("Prior wakefulness", f"{hours}h {minutes}m")
+col2.metric("Prior wakefulness", f"{hours}h {minutes}m")
+sleep_target = bedtime_end + timedelta(seconds=PRIOR_WAKEFULNESS_TARGET)
+col3.metric("Sleep target", sleep_target.strftime("%H:%M"))
 
 st.divider()
 
@@ -161,7 +165,10 @@ else:
     col2.metric("Time asleep", f"{int(hours)}h {int(minutes)}m")
 
 sleep_efficiency = time_asleep / time_in_bed.total_seconds()
-col3.metric("Sleep efficiency", f"{sleep_efficiency:.0%}")
+sleep_efficiency_delta = sleep_efficiency - SLEEP_EFFICIENCY_TARGET
+col3.metric(
+    "Sleep efficiency", f"{sleep_efficiency:.0%}", delta=f"{sleep_efficiency_delta:.0%}"
+)
 
 
 col1, col2 = st.columns(2)
