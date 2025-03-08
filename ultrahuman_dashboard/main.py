@@ -138,7 +138,14 @@ else:
 col3.metric(
     "Sleep efficiency",
     f"{today_metrics['sleep_efficiency']:.0%}",
-    delta=f"{today_metrics['sleep_efficiency_delta']:.0%}",
+    delta=(
+        f"{today_metrics['sleep_efficiency_delta']:.0%}"
+        if (
+            today_metrics["sleep_efficiency_delta"] > 1
+            or today_metrics["sleep_efficiency_delta"] < -1
+        )
+        else None
+    ),
 )
 
 st.divider()
