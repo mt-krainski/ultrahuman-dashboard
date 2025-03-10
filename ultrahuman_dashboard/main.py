@@ -3,6 +3,7 @@ from typing import List
 
 import pandas as pd
 import streamlit as st
+from pydantic import ValidationError
 
 from ultrahuman_dashboard.formatting import format_time, format_timedelta
 from ultrahuman_dashboard.plots import (
@@ -122,7 +123,7 @@ with st.spinner(f"Loading data for the last {HISTORICAL_DATA_RANGE} days..."):
     for day in range(HISTORICAL_DATA_RANGE, 1, -1):
         try:
             data = get_from_ultrahuman_api(today - timedelta(days=day))
-        except Exception:
+        except ValidationError:
             continue
         historical_data.append(parse_data(data))
         progress_bar.progress(
