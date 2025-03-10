@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import List
 
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 from pydantic import ValidationError
 
@@ -80,8 +81,8 @@ col3.metric(
     delta=(
         f"{today_metrics['sleep_efficiency_delta']:.0%}"
         if (
-            today_metrics["sleep_efficiency_delta"] > 1
-            or today_metrics["sleep_efficiency_delta"] < -1
+            today_metrics["sleep_efficiency_delta"] > 0.01
+            or today_metrics["sleep_efficiency_delta"] < -0.01
         )
         else None
     ),
@@ -135,6 +136,34 @@ progress_bar.empty()
 historical_data.append(parse_data(previous_day_data))
 historical_data.append(today_metrics)
 
+
+CORE_SLEEP_LOWER_THRESHOLD = timedelta(hours=5, minutes=30)
+CORE_SLEEP_UPPER_THRESHOLD = timedelta(hours=7)  # Selected somewhat arbitrarily
+core_sleep_debt = timedelta(0)
+core_sleep_debt_over_time = []
+for day_metrics in historical_data:
+    if (
+        core_sleep_deficit := day_metrics["time_asleep"] - CORE_SLEEP_LOWER_THRESHOLD
+    ) < timedelta(0):
+        core_sleep_debt += core_sleep_deficit
+
+    if (
+        core_sleep_surplus := day_metrics["time_asleep"] - CORE_SLEEP_UPPER_THRESHOLD
+    ) > timedelta(0):
+        core_sleep_debt = min(timedelta(0), core_sleep_debt + core_sleep_surplus)
+
+    core_sleep_debt_over_time.append(core_sleep_debt)
+
+core_sleep_delta = core_sleep_debt - core_sleep_debt_over_time[-2]
+st.metric(
+    "Core Sleep Debt",
+    format_timedelta(abs(core_sleep_debt)),
+    format_timedelta(core_sleep_delta) if core_sleep_delta != timedelta(0) else None,
+    delta_color="inverse",
+)
+
+st.line_chart([x.total_seconds() / 60 for x in core_sleep_debt_over_time])
+
 historical_data_df = pd.DataFrame(historical_data)
 historical_data_df["time_asleep_h"] = (
     historical_data_df["time_asleep"].dt.total_seconds() / 3600
@@ -151,4 +180,85 @@ historical_data_df["bedtime_end_time"] = (
 st.line_chart(historical_data_df, x="day", y="time_asleep_h")
 st.line_chart(historical_data_df, x="day", y="time_to_fall_asleep_h")
 st.line_chart(historical_data_df, x="day", y="sleep_efficiency")
-st.line_chart(historical_data_df, x="day", y="bedtime_end_time")
+
+historical_data_df["bedtime_end_time_mean"] = (
+    historical_data_df["bedtime_end_time"].rolling(window=7, center=True).mean()
+)
+historical_data_df["bedtime_end_time_std"] = (
+    historical_data_df["bedtime_end_time"].rolling(window=7, center=True).std()
+)
+historical_data_df["bedtime_end_time_upper"] = (
+    historical_data_df["bedtime_end_time_mean"]
+    + historical_data_df["bedtime_end_time_std"]
+)
+historical_data_df["bedtime_end_time_lower"] = (
+    historical_data_df["bedtime_end_time_mean"]
+    - historical_data_df["bedtime_end_time_std"]
+)
+
+# Fill nulls with the first and last value
+historical_data_df["bedtime_end_time_mean"] = (
+    historical_data_df["bedtime_end_time_mean"].bfill().ffill()
+)
+historical_data_df["bedtime_end_time_std"] = (
+    historical_data_df["bedtime_end_time_std"].bfill().ffill()
+)
+historical_data_df["bedtime_end_time_upper"] = (
+    historical_data_df["bedtime_end_time_upper"].bfill().ffill()
+)
+historical_data_df["bedtime_end_time_lower"] = (
+    historical_data_df["bedtime_end_time_lower"].bfill().ffill()
+)
+
+fig = px.line(
+    historical_data_df,
+    x="day",
+    y="bedtime_end_time",
+    labels={"bedtime_end_time": "Bedtime End Time"},
+    title="Bedtime End Time Over Time",
+)
+
+fig.add_scatter(
+    x=historical_data_df["day"],
+    y=historical_data_df["bedtime_end_time_mean"],
+    mode="lines",
+    name="Mean",
+    line=dict(dash="dash", color="blue"),
+)
+
+fig.add_scatter(
+    x=historical_data_df["day"],
+    y=historical_data_df["bedtime_end_time_upper"],
+    mode="lines",
+    name="Upper Bound",
+    line=dict(width=0),
+    showlegend=False,
+)
+
+fig.add_scatter(
+    x=historical_data_df["day"],
+    y=historical_data_df["bedtime_end_time_lower"],
+    mode="lines",
+    name="Lower Bound",
+    line=dict(width=0),
+    fill="tonexty",
+    fillcolor="rgba(0, 100, 80, 0.2)",
+    showlegend=False,
+)
+
+fig.update_layout(
+    yaxis_title="Bedtime End Time",
+    xaxis_title="Day",
+    legend_title="Legend",
+    yaxis=dict(range=[4, 12]),
+)
+
+st.plotly_chart(fig)
+
+wake_up_time_mean = historical_data_df["bedtime_end_time_mean"].dropna().iloc[-1]
+wake_up_time = f"{int(wake_up_time_mean):02d}:{int((wake_up_time_mean % 1) * 60):02d}"
+
+wake_up_time_variance = historical_data_df["bedtime_end_time_std"].dropna().iloc[-1]
+wake_up_time_variance_str = format_timedelta(timedelta(hours=wake_up_time_variance))
+
+st.metric("Regular wake up time", f"{wake_up_time} ±{wake_up_time_variance_str}")
