@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timedelta
 
 import requests
+import streamlit as st
 
 from ultrahuman_dashboard.schemas import ParsedData, UltrahumanApiResponse
 
@@ -14,6 +15,7 @@ PRIOR_WAKEFULNESS_TARGET = timedelta(hours=16)
 SLEEP_EFFICIENCY_TARGET = 0.9
 
 
+@st.cache_data
 def get_from_ultrahuman_api(date: datetime):
     """Fetch data from the Ultrahuman Partner API for a specific date.
 
@@ -107,6 +109,7 @@ def parse_data(data: UltrahumanApiResponse) -> ParsedData:
     sleep_efficiency = time_asleep.total_seconds() / time_in_bed.total_seconds()
     sleep_efficiency_delta = sleep_efficiency - SLEEP_EFFICIENCY_TARGET
     return {
+        "day": datetime.fromtimestamp(data.data.hr.day_start_timestamp),
         "bedtime_start": bedtime_start,
         "bedtime_end": bedtime_end,
         "time_in_bed": time_in_bed,

@@ -167,6 +167,7 @@ class UltrahumanApiResponse(BaseModel):
 
 
 class ParsedData(TypedDict):
+    day: datetime
     bedtime_start: datetime
     bedtime_end: datetime
     time_in_bed: timedelta

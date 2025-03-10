@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import List
 
 import pandas as pd
 import streamlit as st
@@ -10,74 +11,11 @@ from ultrahuman_dashboard.plots import (
     stamp_bedtime_start,
     stamp_fell_asleep,
 )
-from ultrahuman_dashboard.schemas import samples_to_df
+from ultrahuman_dashboard.schemas import ParsedData, samples_to_df
 from ultrahuman_dashboard.ultrahuman_api import get_from_ultrahuman_api, parse_data
 
-# TODO: The questions from the Insomnia program sleep diary
-# Daily notes:
-# - What time did you get into bed? What time did you turn off the lights?
-# - About how long did it take you to fall asleep?
-# - How many times did you awaken during the night?
-# - For each awakening, how long did it last?
-# - What time was your final wake-up for the day? What time did you get out of bed?
-# - How many hours did you sleep last night?
-# - How many hours did you spend in bed last night?
-# - How would you rate the quality of your sleep last night?
-# - What time do you usually get into bed? Get out of bed?
-# - Does the amount of time spent in bed exceed the amount of time you sleep?
-#     By how much?
-# - Do you have an inconsistent rising time or sleep later or weekends compared to
-#     weekdays?
-# - Do you nap? If yes - how many times per week, for how long
-# - Prior wakefulness - how long are you awake; time between getting up and going to
-#     sleep
-#
-# Weekly summary:
-# - How many nights per week do you have difficulty falling asleep?
-# - On these nights, how much time, on average, does it take you to fall asleep?
-# - How many nights per week do you wake up and have difficulty falling back asleep?
-# - On these nights, how often do you typically wake up?
-# - On average, what is the total amount of time that you lie awake during the night
-#   after these awakenings?
-# - How many days per week is your final wake-up earlier than desired?
-# - On nights when you have insomnia, how many hours on average do you sleep?
-# - On nights when you don't have insomnia, how many hours on average do you sleep?
-# - How many nights per week do you experience a good night of sleep?
-# - How many nights per week do you take sleeping pills? Number of pills? Typical dose?
-# - What is your average sleep quality rating on a scale of 1 to 5?
-#
-# Refreshed summary
-# - the number of good nights of sleep
-# - the number of nights of core sleep (5.5+ h)
-# - the number of insomnia nights
-# - Sleep efficiency: time asleep / time in bed (90% is a good score)
-# - how consistent is the wake up time (number of days you arise within half hour of
-#    your desired time)
-#
-# Other notes:
-# - Temperature drop
-# - Sleep HR pattern (https://ouraring.com/blog/sleeping-heart-rate/?srsltid=AfmBOorjLb4HOEcb11rhBya2CIdSoPox-CZOM8B2phnxxG28qV2dE58f)  # noqa: SC100,E501
-#
-#
-# Daily Reports:
-# - Time in bed - (from - to)
-# - Time asleep - (from - to)
-# - Sleep efficiency
-# - How long it took to fall asleep
-# - How many times you woke up, and for how long on average
-# - Prior wakefulness - right now (how many hours since last wake up)
-# - Temperature drop
-# - Sleep HR pattern
-#
-# Weekly reports:
-# - Time asleep
-# - time to fall asleep
-# - sleep efficiency
-# - How many times you wake up during the night
-# - How many days of effective sleep (sleep efficiency above 90%)
-# - How many days of core sleep
-# - How many days of more-than-enough sleep (8+ h)
-# - Rising time consistency - what time did you wake up, is it consistent?
+HISTORICAL_DATA_RANGE = 28
+
 
 st.set_page_config(page_title="Sleep Dashboard", layout="centered")
 
@@ -102,7 +40,7 @@ st.divider()
 
 now = datetime.now()
 today = now.date()
-data = get_from_ultrahuman_api(today)
+data = get_from_ultrahuman_api(now)
 previous_day_data = get_from_ultrahuman_api(today - timedelta(days=1))
 
 today_metrics = parse_data(data)
@@ -176,3 +114,40 @@ stamp_bedtime_end(fig, today_metrics)
 
 fig.update_yaxes(range=[40, 120])
 col2.plotly_chart(fig)
+
+
+historical_data: List[ParsedData] = []
+with st.spinner(f"Loading data for the last {HISTORICAL_DATA_RANGE} days..."):
+    progress_bar = st.progress(0)
+    for day in range(HISTORICAL_DATA_RANGE, 1, -1):
+        try:
+            data = get_from_ultrahuman_api(today - timedelta(days=day))
+        except Exception:
+            continue
+        historical_data.append(parse_data(data))
+        progress_bar.progress(
+            (HISTORICAL_DATA_RANGE - day) / (HISTORICAL_DATA_RANGE - 1)
+        )
+
+progress_bar.empty()
+
+historical_data.append(parse_data(previous_day_data))
+historical_data.append(today_metrics)
+
+historical_data_df = pd.DataFrame(historical_data)
+historical_data_df["time_asleep_h"] = (
+    historical_data_df["time_asleep"].dt.total_seconds() / 3600
+)
+historical_data_df["time_to_fall_asleep_h"] = (
+    historical_data_df["time_to_fall_asleep"].dt.total_seconds() / 3600
+)
+
+historical_data_df["bedtime_end_time"] = (
+    historical_data_df["bedtime_end"].dt.hour
+    + historical_data_df["bedtime_end"].dt.minute / 60
+)
+
+st.line_chart(historical_data_df, x="day", y="time_asleep_h")
+st.line_chart(historical_data_df, x="day", y="time_to_fall_asleep_h")
+st.line_chart(historical_data_df, x="day", y="sleep_efficiency")
+st.line_chart(historical_data_df, x="day", y="bedtime_end_time")

@@ -8,13 +8,6 @@ from plotly.graph_objs import Figure
 
 from ultrahuman_dashboard.schemas import ParsedData
 
-OVERNIGHT_PLOT_RANGE_START = datetime.combine(
-    datetime.today() - timedelta(days=1), datetime.min.time()
-) + timedelta(hours=22)
-OVERNIGHT_PLOT_RANGE_END = datetime.combine(
-    datetime.today(), datetime.min.time()
-) + timedelta(hours=8)
-
 
 def plot_overnight(df: pd.DataFrame, title: str) -> Figure:
     """
@@ -28,15 +21,23 @@ def plot_overnight(df: pd.DataFrame, title: str) -> Figure:
     Returns:
         Figure: The generated line plot.
     """
-    return px.line(
+    overnight_plot_range_start = datetime.combine(
+        datetime.today() - timedelta(days=1), datetime.min.time()
+    ) + timedelta(hours=22)
+    overnight_plot_range_end = datetime.combine(
+        datetime.today(), datetime.min.time()
+    ) + timedelta(hours=8)
+    fig = px.line(
         df[
-            (df["timestamp"] > OVERNIGHT_PLOT_RANGE_START)
-            & (df["timestamp"] < OVERNIGHT_PLOT_RANGE_END)
+            (df["timestamp"] > overnight_plot_range_start)
+            & (df["timestamp"] < overnight_plot_range_end)
         ],
         x="timestamp",
         y="value",
         title=title,
     )
+    fig.update_xaxes(range=[overnight_plot_range_start, overnight_plot_range_end])
+    return fig
 
 
 def stamp_bedtime_start(fig: Figure, today_metrics: ParsedData) -> None:
