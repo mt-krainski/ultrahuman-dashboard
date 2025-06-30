@@ -10,7 +10,7 @@ python = "^3.12"
 streamlit = "^1.45.1"
 requests = "^2.32.4"
 pydantic = "^2.11.7"
-plotly = "^6.1.2"
+plotly = "^6.2.0"
 
 
 [tool.poetry.group.dev.dependencies]
