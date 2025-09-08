@@ -14,7 +14,7 @@ plotly = "^6.3.0"
 
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.4.1"
+pytest = "^8.4.2"
 darglint = "^1.8.1"
 flake8 = "^7.3.0"
 flake8-bandit = "^4.1.1"
