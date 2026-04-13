@@ -9,7 +9,7 @@ readme = "README.md"
 python = "^3.12"
 streamlit = "^1.55.0"
 requests = "^2.33.1"
-pydantic = "^2.12.5"
+pydantic = "^2.13.0"
 plotly = "^6.6.0"
 
 
